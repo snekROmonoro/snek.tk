@@ -27,7 +27,7 @@
 *.lib
 
 # Executables
-#*.exe # remove this when we moved dll injector to other pc
+*.exe
 *.out
 *.app
 
