@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+# Shitty vs files
+.vs
+Release
