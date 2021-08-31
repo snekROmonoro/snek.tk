@@ -2,6 +2,7 @@
 #include "../includes.hpp"
 
 HWND globals::csgo_window = 0;
+Player* globals::local_player = nullptr;
 
 util::pattern patterns::surface_lock_cursor = util::pattern( );
 util::pattern patterns::clientmodeshared_createmove = util::pattern( );

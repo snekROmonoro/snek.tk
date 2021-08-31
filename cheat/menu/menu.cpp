@@ -836,8 +836,7 @@ void menu::on_end_scene( )
 
 		gui::set_next_window_size( window_size , ImGuiCond_Always );
 
-		if ( gui::begin( "snek.tk##main" , nullptr , ImGuiWindowFlags_NoDecoration ) )
-		{
+		gui::begin( "snek.tk##main" , nullptr , ImGuiWindowFlags_NoDecoration ); {
 			// tip; main menu color should be a bright white
 			const auto MainMenuColor = ImColor(
 				menu::get_main_color( ).r ,
@@ -905,7 +904,7 @@ void menu::on_end_scene( )
 
 			} gui::end_group( );
 
-			if ( gui::begin_child( "##main_child" , ImVec2( -1 , -1 ) , true ) ) {
+			gui::begin_child( "##main_child" , ImVec2( -1 , -1 ) , true ); {
 				/* push colors for new childs */
 				gui::push_style_color( ImGuiCol_ChildBg , ImVec4( 0.04f , 0.04f , 0.04f , 1.f ) );
 				gui::push_style_color( ImGuiCol_Border , ImVec4( 0.01f , 0.01f , 0.01f , 0.6f ) );
@@ -938,7 +937,7 @@ void menu::on_end_scene( )
 
 					static std::string ConfigName = "default";
 
-					if ( gui::begin_child( "List" , ImVec2( -1 , -1 ) , true ) ) {
+					gui::begin_child( "List" , ImVec2( -1 , -1 ) , true ); {
 						for ( auto& cfg : vars::config::get_configs( ) ) {
 							bool is_current = cfg == ConfigName;
 
@@ -959,7 +958,7 @@ void menu::on_end_scene( )
 					// jump to next column
 					ImGui::NextColumn( );
 
-					if ( gui::begin_child( "Main" , ImVec2( -1 , -1 ) , true ) ) {
+					gui::begin_child( "Main" , ImVec2( -1 , -1 ) , true ); {
 						gui::input_text( "Config Name" , &ConfigName , ImGuiInputTextFlags_CharsNoBlank );
 
 						if ( gui::button( "Save Config" , ImVec2( -1 , 0 ) ) ) {

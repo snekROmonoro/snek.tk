@@ -412,32 +412,6 @@ public:
 
 class IVEngineClient {
 public:
-	enum indices : size_t {
-		GETSCREENSIZE = 5 ,
-		GETPLAYERINFO = 8 ,
-		GETPLAYERFORUSERID = 9 ,
-		GETLOCALPLAYER = 12 ,
-		GETLASTTIMESTAMP = 14 ,
-		GETVIEWANGLES = 18 ,
-		SETVIEWANGLES = 19 ,
-		//GETMAXCLIENTS          = 20,
-		ISINGAME = 26 ,
-		ISCONNECTED = 27 ,
-		WORLDTOSCREENMATRIX = 37 ,
-		GETBSPTREEQUERY = 43 ,
-		FIREEVENTS = 59 ,
-		GETNETCHANNELINFO = 78 ,
-		ISPAUSED = 90 ,
-		//ISTAKINGSCREENSHOT     = 92,
-		ISHLTV = 93 ,
-		//SETOCCLUSIONPARAMETERS = 96,
-		GETSCREENASPECTRATIO = 101 ,
-		EXECUTECLIENTCMD = 108 ,
-		//CLIENTCMD_UNRESTRICTED = 114 ,
-		ISVOICERECORDING = 224 ,
-	};
-
-public:
 	void GetScreenSize( int& width , int& height ) {
 		return util::get_virtual_function< void( __thiscall* )( void* , int& , int& ) >( this , 5 )( this , width , height );
 	}

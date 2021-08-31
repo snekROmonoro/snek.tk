@@ -4,6 +4,7 @@ bool hooks::m_hooked = false;
 
 util::hook::vmt_hook hooks::m_vmt_d3d;
 util::hook::vmt_hook hooks::m_vmt_surface;
+util::hook::vmt_hook hooks::m_vmt_client;
 
 bool hooks::init( )
 {
@@ -45,6 +46,22 @@ bool hooks::init( )
 		return false;
 
 	if ( !m_vmt_surface.hook_method( 67 , lockcursor_hk , &o_lockcursor ) )
+		return false;
+
+	// client
+	if ( !m_vmt_client.initialize( sdk::interfaces::client ) )
+		return false;
+
+	if ( !m_vmt_client.hook_method( 5 , LevelInitPreEntity , &oLevelInitPreEntity ) )
+		return false;
+
+	if ( !m_vmt_client.hook_method( 6 , LevelInitPostEntity , &oLevelInitPostEntity ) )
+		return false;
+
+	if ( !m_vmt_client.hook_method( 7 , LevelShutdown , &oLevelShutdown ) )
+		return false;
+
+	if ( !m_vmt_client.hook_method( 37 , FrameStageNotify , &oFrameStageNotify ) )
 		return false;
 
 	util::console::set_prefix( util::console::HOOK );
@@ -138,4 +155,93 @@ void __fastcall hooks::lockcursor_hk( REG ) {
 	}
 
 	o_lockcursor( REG_OUT );
+}
+
+void __fastcall hooks::LevelInitPreEntity( REG , const char* map )
+{
+	if ( !hooks::m_hooked )
+		return oLevelInitPreEntity( REG_OUT , map );
+
+	oLevelInitPreEntity( REG_OUT , map );
+}
+
+void __fastcall hooks::LevelInitPostEntity( REG )
+{
+	if ( !hooks::m_hooked )
+		return oLevelInitPostEntity( REG_OUT );
+
+	globals::local_player = sdk::interfaces::entity_list->GetClientEntity< Player* >( sdk::interfaces::engine->GetLocalPlayer( ) );
+
+	oLevelInitPostEntity( REG_OUT );
+}
+
+void __fastcall hooks::LevelShutdown( REG )
+{
+	if ( !hooks::m_hooked )
+		return oLevelShutdown( REG_OUT );
+
+	globals::local_player = nullptr;
+
+	oLevelShutdown( REG_OUT );
+}
+
+void __fastcall hooks::FrameStageNotify( REG , int stage )
+{
+	if ( !hooks::m_hooked )
+		return oFrameStageNotify( REG_OUT , stage );
+
+	if ( !sdk::interfaces::engine->IsInGame( ) )
+		return oFrameStageNotify( REG_OUT , stage );
+
+	globals::local_player = sdk::interfaces::entity_list->GetClientEntity< Player* >( sdk::interfaces::engine->GetLocalPlayer( ) );
+
+	static auto draw_client_impacts = [ ] ( ) {
+		if ( !globals::local_player )
+			return;
+
+		struct clientHitVerify_t
+		{
+			clientHitVerify_t( )
+			{
+				this->vecPosition = vec3_t( 0 , 0 , 0 );
+				this->flTimestamp = 0;
+				this->flExpireTime = -1;
+			}
+
+			clientHitVerify_t( vec3_t inPos , float flTimestamp , float flExpireTime )
+			{
+				this->vecPosition = inPos;
+				this->flTimestamp = flTimestamp;
+				this->flExpireTime = flExpireTime;
+			}
+
+			vec3_t vecPosition;
+			float flTimestamp;
+			float flExpireTime;
+		};
+
+		CUtlVector< clientHitVerify_t >& m_vecBulletVerifyListClient = globals::local_player->get< CUtlVector< clientHitVerify_t > >( 0xBC00 );
+		static int last_count = 0;
+
+		/*if ( g_cfg [ XOR( "misc_impact" ) ].get<bool>( ) ) {
+			float time = g_csgo.sv_showimpacts_time->GetFloat( );
+			for ( auto i = m_vecBulletVerifyListClient.Count( ); i > last_count; i-- ) {
+				g_csgo.m_debug_overlay->AddBoxOverlay( m_vecBulletVerifyListClient [ i - 1 ].vecPosition , vec3_t( -2 , -2 , -2 ) , vec3_t( 2 , 2 , 2 ) , ang_t( 0 , 0 , 0 ) , 255 , 0 , 0 , 127 , time );
+			}
+		}*/
+
+		for ( auto i = m_vecBulletVerifyListClient.Count( ); i > last_count; i-- ) {
+			sdk::interfaces::debug_overlay->AddBoxOverlay( m_vecBulletVerifyListClient [ i - 1 ].vecPosition , vec3_t( -2 , -2 , -2 ) , vec3_t( 2 , 2 , 2 ) , vec3_t( 0 , 0 , 0 ) , 255 , 0 , 0 , 127 , 4.f );
+		}
+
+		if ( m_vecBulletVerifyListClient.Count( ) != last_count ) {
+			last_count = m_vecBulletVerifyListClient.Count( );
+		}
+	};
+
+	if ( stage == FRAME_RENDER_START ) {
+		draw_client_impacts( );
+	}
+
+	oFrameStageNotify( REG_OUT , stage );
 }

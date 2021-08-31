@@ -2,8 +2,11 @@
 #include <Windows.h>
 #include "../util/include.hpp"
 
+class Player;
+
 namespace globals {
 	extern HWND csgo_window;
+	extern Player* local_player;
 }
 
 namespace patterns {
