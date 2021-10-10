@@ -162,6 +162,7 @@
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="features\events.cpp" />
+    <ClCompile Include="features\prediction.cpp" />
     <ClCompile Include="frame\frame.cpp" />
     <ClCompile Include="globals\globals.cpp" />
     <ClCompile Include="hooks\hooks.cpp" />
@@ -175,6 +176,7 @@
     <ClCompile Include="menu\menu.cpp" />
     <ClCompile Include="renderer\renderer\renderer.cpp" />
     <ClCompile Include="sdk\checksum_crc.cpp" />
+    <ClCompile Include="sdk\CMoveData.cpp" />
     <ClCompile Include="sdk\Entity.cpp" />
     <ClCompile Include="sdk\interfaces\interfaces.cpp" />
     <ClCompile Include="sdk\netvar\netvar.cpp" />
@@ -184,6 +186,7 @@
   <ItemGroup>
     <ClInclude Include="features\events.hpp" />
     <ClInclude Include="features\include.hpp" />
+    <ClInclude Include="features\prediction.hpp" />
     <ClInclude Include="frame\frame.hpp" />
     <ClInclude Include="globals\globals.hpp" />
     <ClInclude Include="hooks\hooks.hpp" />
@@ -205,6 +208,7 @@
     <ClInclude Include="renderer\renderer\renderer.hpp" />
     <ClInclude Include="sdk\basehandle.hpp" />
     <ClInclude Include="sdk\CGameMovement.hpp" />
+    <ClInclude Include="sdk\CGlobalVarsBase.hpp" />
     <ClInclude Include="sdk\checksum_crc.hpp" />
     <ClInclude Include="sdk\ClientClass.hpp" />
     <ClInclude Include="sdk\CMoveData.hpp" />

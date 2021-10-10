@@ -7,13 +7,16 @@ namespace sdk {
 	namespace interfaces {
 		extern IDirect3DDevice9* d3d_device;
 		extern IBaseClientDLL* client;
+		extern CGlobalVarsBase* global_vars;
 		extern CGameUI* game_ui;
 		extern IVModelInfo* model_info;
 		extern IClientEntityList* entity_list;
 		extern ICvar* cvar;
+		extern CClientState* client_state;
 		extern IVEngineClient* engine;
 		extern IInputSystem* input_system;
 		extern CInput* input;
+		extern IMoveHelper* move_helper;
 		extern CPrediction* prediction;
 		extern IEngineVGui* engine_vgui;
 		extern IPanel* panel;

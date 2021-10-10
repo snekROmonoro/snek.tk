@@ -26,12 +26,11 @@ int _stdcall init( uintptr_t mod )
 	}
 
 	try {
+		if ( !sdk::interfaces::init( ) )
+			throw std::runtime_error( "failed to initialize interfaces" );
 
 		if ( !patterns::init( ) )
 			throw std::runtime_error( "failed to grab patterns" );
-
-		if ( !sdk::interfaces::init( ) )
-			throw std::runtime_error( "failed to initialize interfaces" );
 
 		if ( !sdk::netvar::init( ) )
 			throw std::runtime_error( "failed to initialize netvar" );

@@ -763,6 +763,14 @@ public:
 	NETVAR( EHANDLE , m_hGroundEntity , "DT_CSPlayer" , "m_hGroundEntity" );
 	PNETVAR( CBaseHandle* , m_hMyWeapons , "DT_CSPlayer" , "m_hMyWeapons" );
 
+	CUserCmd& m_PlayerCommand( ) {
+		return get< CUserCmd >( 0x326C );
+	}
+
+	CUserCmd*& m_pCurrentCommand( ) {
+		return get< CUserCmd* >( 0x3314 );
+	}
+
 	C_AnimationLayer* m_AnimOverlay( ) {
 		return get< C_AnimationLayer* >( patterns::m_nAnimOverlay.get( ) );
 	}

@@ -5,6 +5,7 @@ bool hooks::m_hooked = false;
 util::hook::vmt_hook hooks::m_vmt_d3d;
 util::hook::vmt_hook hooks::m_vmt_surface;
 util::hook::vmt_hook hooks::m_vmt_client;
+util::hook::vmt_hook hooks::m_vmt_clientmode;
 
 bool hooks::init( )
 {
@@ -26,7 +27,7 @@ bool hooks::init( )
 	util::console::print( "initialized MinHook\n" );
 	util::console::print( "starting to hook..\n" );
 
-	o_wndproc = ( WNDPROC ) SetWindowLongA( globals::csgo_window , GWLP_WNDPROC , ( long ) hooks::wnd_proc );
+	oWndProc = ( WNDPROC ) SetWindowLongA( globals::csgo_window , GWLP_WNDPROC , ( long ) hooks::WndProc );
 	util::console::print( "hooked WndProc\n" );
 
 	util::console::set_prefix( util::console::NONE );
@@ -35,17 +36,17 @@ bool hooks::init( )
 	if ( !m_vmt_d3d.initialize( sdk::interfaces::d3d_device ) )
 		return false;
 
-	if ( !m_vmt_d3d.hook_method( 42 , endscene_hk , &o_endscene ) )
+	if ( !m_vmt_d3d.hook_method( 42 , EndScene , &oEndScene ) )
 		return false;
 
-	if ( !m_vmt_d3d.hook_method( 16 , reset_hk , &o_reset ) )
+	if ( !m_vmt_d3d.hook_method( 16 , Reset , &oReset ) )
 		return false;
 
 	// surface
 	if ( !m_vmt_surface.initialize( sdk::interfaces::surface ) )
 		return false;
 
-	if ( !m_vmt_surface.hook_method( 67 , lockcursor_hk , &o_lockcursor ) )
+	if ( !m_vmt_surface.hook_method( 67 , LockCursor , &oLockCursor ) )
 		return false;
 
 	// client
@@ -62,6 +63,13 @@ bool hooks::init( )
 		return false;
 
 	if ( !m_vmt_client.hook_method( 37 , FrameStageNotify , &oFrameStageNotify ) )
+		return false;
+
+	// client_mode
+	if ( !m_vmt_clientmode.initialize( sdk::interfaces::client_mode ) )
+		return false;
+
+	if ( !m_vmt_clientmode.hook_method( 24 , CreateMove , &oCreateMove ) )
 		return false;
 
 	util::console::set_prefix( util::console::HOOK );
@@ -97,24 +105,24 @@ bool hooks::release( )
 	return true;
 }
 
-WNDPROC hooks::o_wndproc = 0;
-long __stdcall hooks::wnd_proc( HWND hwnd , UINT msg , WPARAM wparam , LPARAM lparam )
+WNDPROC hooks::oWndProc = 0;
+long __stdcall hooks::WndProc( HWND hwnd , UINT msg , WPARAM wparam , LPARAM lparam )
 {
 	if ( menu::wnd_proc( hwnd , msg , wparam , lparam ) )
 		return true;
 
-	return CallWindowProcA( o_wndproc , hwnd , msg , wparam , lparam );
+	return CallWindowProcA( oWndProc , hwnd , msg , wparam , lparam );
 }
 
-long __fastcall hooks::endscene_hk( REG , IDirect3DDevice9* device )
+long __fastcall hooks::EndScene( REG , IDirect3DDevice9* device )
 {
 	if ( !hooks::m_hooked )
-		return o_endscene( REG_OUT , device );
+		return oEndScene( REG_OUT , device );
 
 	// since EndScene gets called twice in CSGO, we'll check for the address to be the same
 	static auto ret = _ReturnAddress( );
 	if ( ret != _ReturnAddress( ) )
-		return o_endscene( REG_OUT , device );
+		return oEndScene( REG_OUT , device );
 
 	frame::update( );
 	input::update( );
@@ -124,18 +132,18 @@ long __fastcall hooks::endscene_hk( REG , IDirect3DDevice9* device )
 		menu::on_end_scene( );
 	} g_renderer.restore_render_states( );
 
-	return o_endscene( REG_OUT , device );
+	return oEndScene( REG_OUT , device );
 }
 
-long __fastcall hooks::reset_hk( REG , IDirect3DDevice9* device , D3DPRESENT_PARAMETERS* presentation_params )
+long __fastcall hooks::Reset( REG , IDirect3DDevice9* device , D3DPRESENT_PARAMETERS* presentation_params )
 {
 	if ( !hooks::m_hooked )
-		return o_reset( REG_OUT , device , presentation_params );
+		return oReset( REG_OUT , device , presentation_params );
 
 	g_renderer.on_lost_device( );
 	menu::on_lost_device( );
 
-	auto hr = o_reset( REG_OUT , device , presentation_params );
+	auto hr = oReset( REG_OUT , device , presentation_params );
 	if ( SUCCEEDED( hr ) ) {
 		/* reset */
 		g_renderer.on_reset_device( device );
@@ -145,16 +153,16 @@ long __fastcall hooks::reset_hk( REG , IDirect3DDevice9* device , D3DPRESENT_PAR
 	return hr;
 }
 
-void __fastcall hooks::lockcursor_hk( REG ) {
+void __fastcall hooks::LockCursor( REG ) {
 	if ( !hooks::m_hooked )
-		return o_lockcursor( REG_OUT );
+		return oLockCursor( REG_OUT );
 
 	if ( menu::m_opened ) {
 		sdk::interfaces::surface->UnlockCursor( );
 		return;
 	}
 
-	o_lockcursor( REG_OUT );
+	oLockCursor( REG_OUT );
 }
 
 void __fastcall hooks::LevelInitPreEntity( REG , const char* map )
@@ -193,6 +201,7 @@ void __fastcall hooks::FrameStageNotify( REG , int stage )
 	if ( !sdk::interfaces::engine->IsInGame( ) )
 		return oFrameStageNotify( REG_OUT , stage );
 
+	globals::last_frame_stage = stage;
 	globals::local_player = sdk::interfaces::entity_list->GetClientEntity< Player* >( sdk::interfaces::engine->GetLocalPlayer( ) );
 
 	static auto draw_client_impacts = [ ] ( ) {
@@ -244,4 +253,44 @@ void __fastcall hooks::FrameStageNotify( REG , int stage )
 	}
 
 	oFrameStageNotify( REG_OUT , stage );
+}
+
+bool __fastcall hooks::CreateMove( REG , float time , CUserCmd* cmd )
+{
+	if ( !hooks::m_hooked )
+		return oCreateMove( REG_OUT , time , cmd );
+
+	bool original = oCreateMove( REG_OUT , time , cmd );
+
+	if ( !cmd )
+		return false;
+
+	if ( original ) {
+		sdk::interfaces::engine->SetViewAngles( cmd->viewangles );
+		sdk::interfaces::prediction->SetLocalViewAngles( cmd->viewangles );
+	}
+
+	if ( !cmd->command_number )
+		return false;
+
+	globals::pCmd = cmd;
+	globals::local_player = sdk::interfaces::entity_list->GetClientEntity< Player* >( sdk::interfaces::engine->GetLocalPlayer( ) );
+
+	bool& bSendPacket = *( bool* ) ( *( uintptr_t* ) ( uintptr_t( _AddressOfReturnAddress( ) ) - sizeof( uintptr_t ) ) - 0x1C );
+	bSendPacket = globals::bSendPacket = true;
+
+	if ( globals::pCmd && globals::local_player ) {
+		features::prediction::update( );
+
+		globals::m_strafe_angles = cmd->viewangles;
+
+		features::prediction::predict( );
+
+		// ....
+
+		features::prediction::restore( );
+	}
+
+	bSendPacket = globals::bSendPacket;
+	return false;
 }

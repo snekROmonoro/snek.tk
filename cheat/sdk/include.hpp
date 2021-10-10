@@ -1,7 +1,13 @@
 #pragma once
 
+#define TICK_INTERVAL			(sdk::interfaces::global_vars->interval_per_tick)
+#define TIME_TO_TICKS( dt )		( (int)( 0.5f + (float)(dt) / TICK_INTERVAL ) )
+#define TICKS_TO_TIME( t )		( TICK_INTERVAL *( t ) )
+#define ROUND_TO_TICKS( t )		( TICK_INTERVAL * TIME_TO_TICKS( t ) )
+
 #include "basehandle.hpp"
 #include "CGameMovement.hpp"
+#include "CGlobalVarsBase.hpp"
 #include "checksum_crc.hpp"
 #include "ClientClass.hpp"
 #include "CMoveData.hpp"

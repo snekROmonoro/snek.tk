@@ -3,6 +3,10 @@
 
 HWND globals::csgo_window = 0;
 Player* globals::local_player = nullptr;
+bool globals::bSendPacket = true;
+vec3_t globals::m_strafe_angles = vec3_t( );
+CUserCmd* globals::pCmd = nullptr;
+int globals::last_frame_stage = ClientFrameStage_t::FRAME_UNDEFINED;
 
 util::pattern patterns::surface_lock_cursor = util::pattern( );
 util::pattern patterns::clientmodeshared_createmove = util::pattern( );
@@ -37,6 +41,8 @@ util::pattern patterns::SetAbsOrigin = util::pattern( );
 util::pattern patterns::IsLocalPlayer = util::pattern( );
 util::pattern patterns::studioHdr = util::pattern( );
 util::pattern patterns::BoneAccessor = util::pattern( );
+int* patterns::m_nPredictionRandomSeed = nullptr;
+Player* patterns::m_pPredictionPlayer = nullptr;
 
 bool patterns::init( void )
 {
@@ -173,6 +179,9 @@ bool patterns::init( void )
 	patterns::BoneAccessor = util::pattern::search( "client.dll" , "8D 81 ? ? ? ? 50 8D 84 24" ).add( 0x2 ).deref( );
 	if ( !patterns::BoneAccessor.get( ) )
 		return false;
+
+	patterns::m_nPredictionRandomSeed = util::address( util::get_virtual_function< void* >( sdk::interfaces::prediction , 19 ) ).add( 0x30 ).deref( ).get< int* >( );
+	patterns::m_pPredictionPlayer = util::address( util::get_virtual_function< void* >( sdk::interfaces::prediction , 19 ) ).add( 0x54 ).deref( ).get< Player* >( );
 
 	return true;
 }

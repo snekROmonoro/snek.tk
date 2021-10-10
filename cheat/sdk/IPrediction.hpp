@@ -1,8 +1,23 @@
 #pragma once
 #include "../util/vfunc/vfunc.hpp"
+#include "CMoveData.hpp"
 
 // https://github.com/ValveSoftware/source-sdk-2013/blob/master/sp/src/public/iprediction.h
 // more likely: https://github.com/ValveSoftware/source-sdk-2013/blob/master/mp/src/game/client/prediction.h
+
+class Entity;
+class CUserCmd;
+
+class IMoveHelper {
+public:
+	void SetHost( Entity* host ) {
+		return util::get_virtual_function< void( __thiscall* )( void* , Entity* ) >( this , 1 )( this , host );
+	}
+
+	void ProcessImpacts( ) {
+		return util::get_virtual_function< void( __thiscall* )( void* ) >( this , 4 )( this );
+	}
+};
 
 class CPrediction
 {
@@ -15,14 +30,12 @@ public:
 	bool    m_bOldCLPredictValue;		// 0x000B
 	int32_t m_nPreviousStartFrame;		// 0x000C
 	int32_t m_nCommandsPredicted;		// 0x0010
-	PAD( 0x4 );							// 0x0014
-	int m_nServerCommandsAcknowledged;  // 0x0018
-	int m_bPreviousAckHadErrors;		// 0x001C
-	char pad_0x0020 [ 0x4 ];			// 0x0020
-	int m_nIncomingPacketNumber;		// 0x0024
-	float m_flIdealPitch;
-	int m_nLastCommandAcknowledged;
-	bool m_bPreviousAckErrorTriggersFullLatchReset;
+	PAD( 0x38 );						// 0x0014
+	float   m_flBackupRealtime;			// 0x004C
+	PAD( 0xC );							// 0x0050
+	float   m_flBackupCurtime;			// 0x005C
+	PAD( 0xC );							// 0x0060
+	float   m_flBackupInterval;			// 0x006C
 
 	void Update(
 		int startframe ,		// World update ( un-modded ) most recently received
@@ -31,7 +44,22 @@ public:
 		int outgoing_command	// Last command (most recent) sent to server (un-modded)
 	)
 	{
-		using o_fn = void( __thiscall* )( void* , int , bool , int , int );
-		util::get_virtual_function< o_fn >( this , 3 )( this , startframe , validframe , incoming_acknowledged , outgoing_command );
+		util::get_virtual_function< void( __thiscall* )( void* , int , bool , int , int ) >( this , 3 )( this , startframe , validframe , incoming_acknowledged , outgoing_command );
+	}
+
+	void GetLocalViewAngles( vec3_t& ang ) {
+		return util::get_virtual_function< void( __thiscall* )( void* , vec3_t& ) >( this , 12 )( this , ang );
+	}
+
+	void SetLocalViewAngles( vec3_t& ang ) {
+		return util::get_virtual_function< void( __thiscall* )( void* , vec3_t& ) >( this , 13 )( this , ang );
+	}
+
+	void SetupMove( Entity* player , CUserCmd* cmd , IMoveHelper* helper , CMoveData* data ) {
+		return util::get_virtual_function< void( __thiscall* )( void* , Entity* , CUserCmd* , IMoveHelper* , CMoveData* ) >( this , 20 )( this , player , cmd , helper , data );
+	}
+
+	void FinishMove( Entity* player , CUserCmd* cmd , CMoveData* data ) {
+		return util::get_virtual_function< void( __thiscall* )( void* , Entity* , CUserCmd* , CMoveData* ) >( this , 21 )( this , player , cmd , data );
 	}
 };

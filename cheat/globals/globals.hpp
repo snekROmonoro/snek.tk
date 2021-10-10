@@ -3,10 +3,16 @@
 #include "../util/include.hpp"
 
 class Player;
+class vec3_t;
+class CUserCmd;
 
 namespace globals {
 	extern HWND csgo_window;
 	extern Player* local_player;
+	extern bool bSendPacket;
+	extern vec3_t m_strafe_angles;
+	extern CUserCmd* pCmd;
+	extern int last_frame_stage;
 }
 
 namespace patterns {
@@ -43,6 +49,8 @@ namespace patterns {
 	extern util::pattern IsLocalPlayer;
 	extern util::pattern studioHdr;
 	extern util::pattern BoneAccessor;
+	extern int* m_nPredictionRandomSeed;
+	extern Player* m_pPredictionPlayer;
 
 	bool init( void );
 }

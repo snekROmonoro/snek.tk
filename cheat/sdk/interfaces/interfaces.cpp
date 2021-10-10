@@ -189,13 +189,16 @@ IMemAlloc* g_pMemAlloc = nullptr;
 
 IDirect3DDevice9* sdk::interfaces::d3d_device = nullptr;
 IBaseClientDLL* sdk::interfaces::client = nullptr;
+CGlobalVarsBase* sdk::interfaces::global_vars = nullptr;
 CGameUI* sdk::interfaces::game_ui = nullptr;
 IVModelInfo* sdk::interfaces::model_info = nullptr;
 IClientEntityList* sdk::interfaces::entity_list = nullptr;
 ICvar* sdk::interfaces::cvar = nullptr;
+CClientState* sdk::interfaces::client_state = nullptr;
 IVEngineClient* sdk::interfaces::engine = nullptr;
 IInputSystem* sdk::interfaces::input_system = nullptr;
 CInput* sdk::interfaces::input = nullptr;
+IMoveHelper* sdk::interfaces::move_helper = nullptr;
 CPrediction* sdk::interfaces::prediction = nullptr;
 IEngineVGui* sdk::interfaces::engine_vgui = nullptr;
 IPanel* sdk::interfaces::panel = nullptr;
@@ -235,6 +238,13 @@ bool sdk::interfaces::init( void )
 	if ( !sdk::interfaces::client )
 		return false;
 
+	sdk::interfaces::global_vars = util::address( util::get_virtual_function< void* >( sdk::interfaces::client , 0 ) ).add( 0x1f ).deref( ).deref( ).get< CGlobalVarsBase* >( );
+	util::console::set_prefix( util::console::SDK );
+	util::console::print( "sdk::interfaces::global_vars: 0x%p\n" , sdk::interfaces::global_vars );
+	util::console::set_prefix( util::console::NONE );
+	if ( !sdk::interfaces::global_vars )
+		return false;
+
 	//sdk::interfaces::game_ui = create_interface< CGameUI* >( "client.dll" , "GameUI011" );
 	sdk::interfaces::game_ui = get_interface_by_name< CGameUI* >( "GameUI" , true );
 	if ( !sdk::interfaces::game_ui )
@@ -255,6 +265,13 @@ bool sdk::interfaces::init( void )
 	if ( !sdk::interfaces::cvar )
 		return false;
 
+	sdk::interfaces::client_state = util::pattern::search( "engine.dll" , "B9 ? ? ? ? 56 FF 50 14 8B 34 85" , true ).add( 0x1 ).deref( ).get< CGlobalState* >( )->m_client_state;
+	util::console::set_prefix( util::console::SDK );
+	util::console::print( "sdk::interfaces::client_state: 0x%p\n" , sdk::interfaces::client_state );
+	util::console::set_prefix( util::console::NONE );
+	if ( !sdk::interfaces::client_state )
+		return false;
+
 	sdk::interfaces::engine = get_interface_by_name< IVEngineClient* >( "VEngineClient" , true );
 	if ( !sdk::interfaces::engine )
 		return false;
@@ -268,6 +285,13 @@ bool sdk::interfaces::init( void )
 	util::console::print( "sdk::interfaces::input: 0x%p\n" , sdk::interfaces::input );
 	util::console::set_prefix( util::console::NONE );
 	if ( !sdk::interfaces::input )
+		return false;
+
+	sdk::interfaces::move_helper = util::pattern::search( "client.dll" , "8B 0D ? ? ? ? 8B 46 08 68" , true ).add( 0x2 ).deref( ).deref( ).get< IMoveHelper* >( );
+	util::console::set_prefix( util::console::SDK );
+	util::console::print( "sdk::interfaces::move_helper: 0x%p\n" , sdk::interfaces::move_helper );
+	util::console::set_prefix( util::console::NONE );
+	if ( !sdk::interfaces::move_helper )
 		return false;
 
 	sdk::interfaces::prediction = get_interface_by_name< CPrediction* >( "VClientPrediction" , true );

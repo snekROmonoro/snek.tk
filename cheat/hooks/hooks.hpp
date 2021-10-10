@@ -14,23 +14,26 @@ namespace hooks {
 	extern util::hook::vmt_hook m_vmt_d3d;
 	extern util::hook::vmt_hook m_vmt_surface;
 	extern util::hook::vmt_hook m_vmt_client;
+	extern util::hook::vmt_hook m_vmt_clientmode;
 
-	long __stdcall wnd_proc( HWND hwnd , UINT msg , WPARAM wparam , LPARAM lparam );
-	extern WNDPROC o_wndproc;
+	long __stdcall WndProc( HWND hwnd , UINT msg , WPARAM wparam , LPARAM lparam );
+	extern WNDPROC oWndProc;
 
-	long __fastcall endscene_hk( REG , IDirect3DDevice9* device );
-	long __fastcall reset_hk( REG , IDirect3DDevice9* device , D3DPRESENT_PARAMETERS* presentation_params );
-	void __fastcall lockcursor_hk( REG );
+	long __fastcall EndScene( REG , IDirect3DDevice9* device );
+	long __fastcall Reset( REG , IDirect3DDevice9* device , D3DPRESENT_PARAMETERS* presentation_params );
+	void __fastcall LockCursor( REG );
 	void __fastcall LevelInitPreEntity( REG , const char* map );
 	void __fastcall LevelInitPostEntity( REG );
 	void __fastcall LevelShutdown( REG );
 	void __fastcall FrameStageNotify( REG , int stage );
+	bool  __fastcall CreateMove( REG , float time , CUserCmd* cmd );
 
-	inline decltype( &endscene_hk ) o_endscene = nullptr;
-	inline decltype( &reset_hk ) o_reset = nullptr;
-	inline decltype( &lockcursor_hk ) o_lockcursor = nullptr;
+	inline decltype( &EndScene ) oEndScene = nullptr;
+	inline decltype( &Reset ) oReset = nullptr;
+	inline decltype( &LockCursor ) oLockCursor = nullptr;
 	inline decltype( &LevelInitPreEntity ) oLevelInitPreEntity = nullptr;
 	inline decltype( &LevelInitPostEntity ) oLevelInitPostEntity = nullptr;
 	inline decltype( &LevelShutdown ) oLevelShutdown = nullptr;
 	inline decltype( &FrameStageNotify ) oFrameStageNotify = nullptr;
+	inline decltype( &CreateMove ) oCreateMove = nullptr;
 }

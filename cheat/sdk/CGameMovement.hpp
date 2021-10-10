@@ -1,34 +1,32 @@
 #pragma once
-#include "CMoveData.hpp"
 #include "../util/vfunc/vfunc.hpp"
+#include "../math/Vector.hpp"
 
-class CGameMovement {
+class Entity;
+class CMoveData;
+
+class IGameMovement
+{
 public:
-	void ProcessMovement( void* player , CMoveData* data ) {
-		return util::get_virtual_function< void( __thiscall* )( void* , void* , CMoveData* ) >( this , 1 )( this , player , data );
-	}
+	virtual			~IGameMovement( void ) {}
 
-	void Reset( ) {
-		return util::get_virtual_function< void( __thiscall* )( void* ) >( this , 2 )( this );
-	}
+	virtual void	          ProcessMovement( Entity* pPlayer , CMoveData* pMove ) = 0;
+	virtual void	          Reset( void ) = 0;
+	virtual void	          StartTrackPredictionErrors( Entity* pPlayer ) = 0;
+	virtual void	          FinishTrackPredictionErrors( Entity* pPlayer ) = 0;
+	virtual void	          DiffPrint( char const* fmt , ... ) = 0;
+	virtual vec3_t const& GetPlayerMins( bool ducked ) const = 0;
+	virtual vec3_t const& GetPlayerMaxs( bool ducked ) const = 0;
+	virtual vec3_t const& GetPlayerViewOffset( bool ducked ) const = 0;
+	virtual bool		        IsMovingPlayerStuck( void ) const = 0;
+	virtual Entity* GetMovingPlayer( void ) const = 0;
+	virtual void		        UnblockPusher( Entity* pPlayer , Entity* pPusher ) = 0;
+	virtual void            SetupMovementBounds( CMoveData* pMove ) = 0;
+};
 
-	void StartTrackPredictionErrors( void* player ) {
-		return util::get_virtual_function< void( __thiscall* )( void* , void* ) >( this , 3 )( this , player );
-	}
-
-	void FinishTrackPredictionErrors( void* player ) {
-		return util::get_virtual_function< void( __thiscall* )( void* , void* ) >( this , 4 )( this , player );
-	}
-
-	vec3_t const& GetPlayerMins( bool ducked ) {
-		return util::get_virtual_function< vec3_t const& ( __thiscall* )( void* , bool ) >( this , 6 )( this , ducked );
-	}
-
-	vec3_t const& GetPlayerMaxs( bool ducked ) {
-		return util::get_virtual_function< vec3_t const& ( __thiscall* )( void* , bool ) >( this , 7 )( this , ducked );
-	}
-
-	vec3_t const& GetPlayerViewOffset( bool ducked ) {
-		return util::get_virtual_function< vec3_t const& ( __thiscall* )( void* , bool ) >( this , 8 )( this , ducked );
-	}
+class CGameMovement
+	: public IGameMovement
+{
+public:
+	virtual ~CGameMovement( void ) {}
 };
