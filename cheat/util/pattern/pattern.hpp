@@ -66,16 +66,16 @@ namespace util {
 
 			pattern ret = pattern( _find_signature( mod , sig ) );
 
-			if ( !silent ) {
-				if ( ret.get( ) ) {
+			if ( ret.get( ) ) {
+				if ( !silent ) {
 					util::console::set_prefix( util::console::SIG );
-					util::console::print( "found in module %s pattern ''%s'' at: 0x%p\n" , mod , sig , ret.get< void* >( ) );
+					util::console::print( "found in module %s pattern \"%s\" at: 0x%p\n" , mod , sig , ret.get< void* >( ) );
+					util::console::set_prefix( util::console::NONE );
 				}
-				else {
-					util::console::set_prefix( util::console::ERR );
-					util::console::print( "couldn't find pattern ''%s'' in module %s\n" , sig , mod );
-				}
-
+			}
+			else {
+				util::console::set_prefix( util::console::ERR );
+				util::console::print( "couldn't find pattern \"%s\" in module %s\n" , sig , mod );
 				util::console::set_prefix( util::console::NONE );
 			}
 

@@ -15,12 +15,10 @@ void features::prediction::update( )
 		*( bool* ) ( ( uintptr_t ) sdk::interfaces::prediction + 0x24 ) = true;
 	}
 
-	// render start was not called.
-	if ( globals::last_frame_stage == FRAME_NET_UPDATE_END ) {
+	if ( sdk::interfaces::client_state->m_nDeltaTick >= 0 ) {
 		int start = sdk::interfaces::client_state->last_command_ack;
 		int stop = sdk::interfaces::client_state->lastoutgoingcommand + sdk::interfaces::client_state->chokedcommands;
 
-		// call CPrediction::Update.
 		sdk::interfaces::prediction->Update( sdk::interfaces::client_state->m_nDeltaTick , valid , start , stop );
 	}
 }
@@ -38,32 +36,84 @@ void features::prediction::predict( )
 	m_stored_variables::m_flags = globals::local_player->m_fFlags( );
 	m_stored_variables::m_curtime = sdk::interfaces::global_vars->curtime;
 	m_stored_variables::m_frametime = sdk::interfaces::global_vars->frametime;
+	m_stored_variables::m_bInPrediction = sdk::interfaces::prediction->m_bInPrediction;
+	m_stored_variables::m_bFirstTimePredicted = sdk::interfaces::prediction->m_bFirstTimePredicted;
 
 	sdk::interfaces::prediction->m_bInPrediction = true;
+	sdk::interfaces::prediction->m_bFirstTimePredicted = false;
 
 	static CMoveData data { };
 	//memset( &data , 0 , sizeof( CMoveData ) );
 
+	// StartCommand
+	globals::local_player->m_pCurrentCommand( ) = globals::pCmd;
+	globals::local_player->m_LastCmd( ) = *globals::pCmd; // should we also do this?
 	*patterns::m_nPredictionRandomSeed = globals::pCmd->random_seed;
 	patterns::m_pPredictionPlayer = globals::local_player;
 
-	// CPrediction::StartCommand
-	globals::local_player->m_pCurrentCommand( ) = globals::pCmd;
-	globals::local_player->m_PlayerCommand( ) = *globals::pCmd;
-
+	// Set globals appropriately
 	sdk::interfaces::global_vars->curtime = globals::local_player->m_nTickBase( ) * sdk::interfaces::global_vars->interval_per_tick;
-	sdk::interfaces::global_vars->frametime = sdk::interfaces::prediction->m_bEnginePaused ? 0.f : sdk::interfaces::global_vars->interval_per_tick;
+	sdk::interfaces::global_vars->frametime = sdk::interfaces::prediction->m_bEnginePaused ? 0 : sdk::interfaces::global_vars->interval_per_tick;
+
+	// Add and subtract buttons we're forcing on the player
+	globals::pCmd->buttons |= globals::local_player->m_afButtonForced( );
+	globals::pCmd->buttons &= ~globals::local_player->m_afButtonDisabled( );
 
 	sdk::interfaces::move_helper->SetHost( globals::local_player );
 	sdk::interfaces::game_movement->StartTrackPredictionErrors( globals::local_player );
 
+	// Do weapon selection
+	/*if ( ucmd->weaponselect != 0 )
+	{
+		C_BaseCombatWeapon* weapon = ToBaseCombatWeapon( CBaseEntity::Instance( ucmd->weaponselect ) );
+		if ( weapon )
+		{
+			player->SelectItem( weapon->GetName( ) , ucmd->weaponsubtype );
+		}
+	}*/
+
+	// vehicles?
+
+	if ( globals::pCmd->impulse )
+		globals::local_player->m_nImpulse( ) = globals::pCmd->impulse;
+
+	// Get button states
+	globals::local_player->UpdateButtonState( globals::pCmd->buttons );
+
+	sdk::interfaces::prediction->CheckMovingGround( globals::local_player , sdk::interfaces::global_vars->frametime );
+
+	// Copy from command to player unless game .dll has set angle using fixangle
+	//player->SetLocalViewAngles( ucmd->viewangles );
+	sdk::interfaces::prediction->SetLocalViewAngles( globals::pCmd->viewangles );
+
+	// Call standard client pre-think
+	//RunPreThink( player );
+	if ( globals::local_player->PhysicsRunThink( 0 /*THINK_FIRE_ALL_FUNCTIONS*/ ) ) {
+		globals::local_player->PreThink( );
+	}
+
+	// Call Think if one is set
+	//RunThink( player , TICK_INTERVAL );
+	const auto m_nNextTick = globals::local_player->get< int* >( 0xFC );
+	if ( *m_nNextTick > 0 && *m_nNextTick <= globals::local_player->m_nTickBase( ) )
+	{
+		globals::local_player->SetNextThink( -1 ); // TICK_NEVER_THINK
+		globals::local_player->Think( );
+	}
+
+	// Setup input.
 	sdk::interfaces::prediction->SetupMove( globals::local_player , globals::pCmd , sdk::interfaces::move_helper , &data );
 
+	// RUN MOVEMENT
 	sdk::interfaces::game_movement->ProcessMovement( globals::local_player , &data );
-	sdk::interfaces::prediction->FinishMove( globals::local_player , globals::pCmd , &data );
-	sdk::interfaces::game_movement->FinishTrackPredictionErrors( globals::local_player );
 
-	sdk::interfaces::move_helper->SetHost( nullptr );
+	sdk::interfaces::prediction->FinishMove( globals::local_player , globals::pCmd , &data );
+
+	sdk::interfaces::move_helper->ProcessImpacts( );
+
+	// RunPostThink( player );
+
+	sdk::interfaces::game_movement->FinishTrackPredictionErrors( globals::local_player );
 }
 
 void features::prediction::restore( )
@@ -71,13 +121,25 @@ void features::prediction::restore( )
 	if ( !globals::pCmd || !globals::local_player )
 		return;
 
-	sdk::interfaces::prediction->m_bInPrediction = false;
+	// FinishCommand
+	globals::local_player->m_pCurrentCommand( ) = NULL;
+	*patterns::m_nPredictionRandomSeed = NULL;
+	patterns::m_pPredictionPlayer = NULL;
 
-	*patterns::m_nPredictionRandomSeed = -1;
-	patterns::m_pPredictionPlayer = nullptr;
+	sdk::interfaces::game_movement->Reset( );
 
+	if ( !sdk::interfaces::prediction->m_bEnginePaused && sdk::interfaces::global_vars->frametime > 0 ) {
+		globals::local_player->m_nTickBase( )++;
+	}
+
+	// restore globals.
 	sdk::interfaces::global_vars->curtime = m_stored_variables::m_curtime;
 	sdk::interfaces::global_vars->frametime = m_stored_variables::m_frametime;
+
+	sdk::interfaces::prediction->m_bInPrediction = m_stored_variables::m_bInPrediction;
+	sdk::interfaces::prediction->m_bFirstTimePredicted = m_stored_variables::m_bFirstTimePredicted;
+
+	sdk::interfaces::move_helper->SetHost( nullptr );
 }
 
 void features::prediction::correct_viewmodel_data( )

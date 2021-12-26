@@ -44,11 +44,18 @@ namespace patterns {
 	extern util::pattern player_invalidate_physics_recursive;
 	extern util::pattern player_lookup_bone;
 	extern util::pattern player_spawn_time;
+	extern util::pattern m_LastCmd;
+	extern util::pattern m_afButtonForced;
+	extern util::pattern m_afButtonLast;
 	extern util::pattern SetAbsAngles;
 	extern util::pattern SetAbsOrigin;
 	extern util::pattern IsLocalPlayer;
 	extern util::pattern studioHdr;
 	extern util::pattern BoneAccessor;
+	extern int PreThink_idx;
+	extern int Think_idx;
+	extern util::pattern player_SetNextThink;
+	extern util::pattern player_PhysicsRunThink;
 	extern int* m_nPredictionRandomSeed;
 	extern Player* m_pPredictionPlayer;
 

@@ -95,4 +95,3 @@ public:
 	vec3_t            _m_vecAbsOrigin;        // edict::origin
 
 };
-

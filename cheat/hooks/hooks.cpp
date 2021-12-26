@@ -69,7 +69,10 @@ bool hooks::init( )
 	if ( !m_vmt_clientmode.initialize( sdk::interfaces::client_mode ) )
 		return false;
 
-	if ( !m_vmt_clientmode.hook_method( 24 , CreateMove , &oCreateMove ) )
+	/*if ( !m_vmt_clientmode.hook_method( 24 , CreateMove , &oCreateMove ) )
+		return false;*/
+
+	if ( !util::hook::hook_address( patterns::clientmodeshared_createmove.get< void* >( ) , CreateMove , &oCreateMove ) )
 		return false;
 
 	util::console::set_prefix( util::console::HOOK );
@@ -229,7 +232,7 @@ void __fastcall hooks::FrameStageNotify( REG , int stage )
 			float flExpireTime;
 		};
 
-		CUtlVector< clientHitVerify_t >& m_vecBulletVerifyListClient = globals::local_player->get< CUtlVector< clientHitVerify_t > >( 0xBC00 );
+		CUtlVector< clientHitVerify_t >& m_vecBulletVerifyListClient = globals::local_player->get< CUtlVector< clientHitVerify_t > >( 0x11C50 );
 		static int last_count = 0;
 
 		/*if ( g_cfg [ XOR( "misc_impact" ) ].get<bool>( ) ) {
@@ -276,7 +279,10 @@ bool __fastcall hooks::CreateMove( REG , float time , CUserCmd* cmd )
 	globals::pCmd = cmd;
 	globals::local_player = sdk::interfaces::entity_list->GetClientEntity< Player* >( sdk::interfaces::engine->GetLocalPlayer( ) );
 
-	bool& bSendPacket = *( bool* ) ( *( uintptr_t* ) ( uintptr_t( _AddressOfReturnAddress( ) ) - sizeof( uintptr_t ) ) - 0x1C );
+	PVOID pebp;
+	__asm mov pebp , ebp;
+	bool* pbSendPacket = ( bool* ) ( *( DWORD* ) pebp - 0x1C );
+	bool& bSendPacket = *pbSendPacket;
 	bSendPacket = globals::bSendPacket = true;
 
 	if ( globals::pCmd && globals::local_player ) {

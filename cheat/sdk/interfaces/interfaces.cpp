@@ -150,6 +150,10 @@ t get_interface_by_name( const char* iname , bool nover = false , int skip = 0 )
 			continue;
 		}
 
+		if ( strstr( interf_name , "GameMovement001" ) && !strstr( module_name , "client.dll" ) ) {
+			continue;
+		}
+
 		bool exact = false;
 		if ( nover ) {
 			exact = !strncmp( interf_name , iname , part_match_len ) && std::atoi( interf_name + part_match_len ) > 0;
@@ -194,8 +198,8 @@ CGameUI* sdk::interfaces::game_ui = nullptr;
 IVModelInfo* sdk::interfaces::model_info = nullptr;
 IClientEntityList* sdk::interfaces::entity_list = nullptr;
 ICvar* sdk::interfaces::cvar = nullptr;
-CClientState* sdk::interfaces::client_state = nullptr;
 IVEngineClient* sdk::interfaces::engine = nullptr;
+CClientState* sdk::interfaces::client_state = nullptr;
 IInputSystem* sdk::interfaces::input_system = nullptr;
 CInput* sdk::interfaces::input = nullptr;
 IMoveHelper* sdk::interfaces::move_helper = nullptr;
@@ -204,7 +208,7 @@ IEngineVGui* sdk::interfaces::engine_vgui = nullptr;
 IPanel* sdk::interfaces::panel = nullptr;
 ISurface* sdk::interfaces::surface = nullptr;
 IVDebugOverlay* sdk::interfaces::debug_overlay = nullptr;
-CGameMovement* sdk::interfaces::game_movement = nullptr;
+IGameMovement* sdk::interfaces::game_movement = nullptr;
 IClientMode* sdk::interfaces::client_mode = nullptr;
 IClientShadowMgr* sdk::interfaces::shadow_manager = nullptr;
 IMaterialSystem* sdk::interfaces::material_system = nullptr;
@@ -265,15 +269,16 @@ bool sdk::interfaces::init( void )
 	if ( !sdk::interfaces::cvar )
 		return false;
 
-	sdk::interfaces::client_state = util::pattern::search( "engine.dll" , "B9 ? ? ? ? 56 FF 50 14 8B 34 85" , true ).add( 0x1 ).deref( ).get< CGlobalState* >( )->m_client_state;
+	sdk::interfaces::engine = get_interface_by_name< IVEngineClient* >( "VEngineClient" , true );
+	if ( !sdk::interfaces::engine )
+		return false;
+
+	//sdk::interfaces::client_state = util::pattern::search( "engine.dll" , "B9 ? ? ? ? 56 FF 50 14 8B 34 85" , true ).add( 0x1 ).deref( ).get< CGlobalState* >( )->m_client_state;
+	sdk::interfaces::client_state = **( CClientState*** ) ( ( ( *( uintptr_t** ) sdk::interfaces::engine ) [ 12 ] ) + 0x10 );
 	util::console::set_prefix( util::console::SDK );
 	util::console::print( "sdk::interfaces::client_state: 0x%p\n" , sdk::interfaces::client_state );
 	util::console::set_prefix( util::console::NONE );
 	if ( !sdk::interfaces::client_state )
-		return false;
-
-	sdk::interfaces::engine = get_interface_by_name< IVEngineClient* >( "VEngineClient" , true );
-	if ( !sdk::interfaces::engine )
 		return false;
 
 	sdk::interfaces::input_system = get_interface_by_name< IInputSystem* >( "InputSystemVersion" , true );
@@ -287,7 +292,8 @@ bool sdk::interfaces::init( void )
 	if ( !sdk::interfaces::input )
 		return false;
 
-	sdk::interfaces::move_helper = util::pattern::search( "client.dll" , "8B 0D ? ? ? ? 8B 46 08 68" , true ).add( 0x2 ).deref( ).deref( ).get< IMoveHelper* >( );
+	//sdk::interfaces::move_helper = util::pattern::search( "client.dll" , "8B 0D ? ? ? ? 8B 46 08 68" , true ).add( 0x2 ).deref( ).deref( ).get< IMoveHelper* >( );
+	sdk::interfaces::move_helper = util::pattern::search( "client.dll" , "8B 0D ? ? ? ? 8B 45 ? 51 8B D4 89 02 8B 01" , true ).add( 0x2 ).deref( ).deref( ).get< IMoveHelper* >( );
 	util::console::set_prefix( util::console::SDK );
 	util::console::print( "sdk::interfaces::move_helper: 0x%p\n" , sdk::interfaces::move_helper );
 	util::console::set_prefix( util::console::NONE );
@@ -314,7 +320,7 @@ bool sdk::interfaces::init( void )
 	if ( !sdk::interfaces::debug_overlay )
 		return false;
 
-	sdk::interfaces::game_movement = get_interface_by_name< CGameMovement* >( "GameMovement" , true );
+	sdk::interfaces::game_movement = get_interface_by_name< IGameMovement* >( "GameMovement001" , false );
 	if ( !sdk::interfaces::game_movement )
 		return false;
 

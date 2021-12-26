@@ -19,6 +19,8 @@ namespace features {
 			inline vec3_t m_velocity;
 			inline vec3_t m_origin;
 			inline int m_flags;
+
+			inline bool m_bInPrediction , m_bFirstTimePredicted;
 		}
 
 		namespace m_stored_viewmodel_variables {

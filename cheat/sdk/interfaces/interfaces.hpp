@@ -12,8 +12,8 @@ namespace sdk {
 		extern IVModelInfo* model_info;
 		extern IClientEntityList* entity_list;
 		extern ICvar* cvar;
-		extern CClientState* client_state;
 		extern IVEngineClient* engine;
+		extern CClientState* client_state;
 		extern IInputSystem* input_system;
 		extern CInput* input;
 		extern IMoveHelper* move_helper;
@@ -22,7 +22,7 @@ namespace sdk {
 		extern IPanel* panel;
 		extern ISurface* surface;
 		extern IVDebugOverlay* debug_overlay;
-		extern CGameMovement* game_movement;
+		extern IGameMovement* game_movement;
 		extern IClientMode* client_mode;
 		extern IClientShadowMgr* shadow_manager;
 		extern IMaterialSystem* material_system;

@@ -36,11 +36,18 @@ util::pattern patterns::player_bone_cache_offset = util::pattern( );
 util::pattern patterns::player_invalidate_physics_recursive = util::pattern( );
 util::pattern patterns::player_lookup_bone = util::pattern( );
 util::pattern patterns::player_spawn_time = util::pattern( );
+util::pattern patterns::m_LastCmd = util::pattern( );
+util::pattern patterns::m_afButtonForced = util::pattern( );
+util::pattern patterns::m_afButtonLast = util::pattern( );
 util::pattern patterns::SetAbsAngles = util::pattern( );
 util::pattern patterns::SetAbsOrigin = util::pattern( );
 util::pattern patterns::IsLocalPlayer = util::pattern( );
 util::pattern patterns::studioHdr = util::pattern( );
 util::pattern patterns::BoneAccessor = util::pattern( );
+int patterns::PreThink_idx = 0;
+int patterns::Think_idx = 0;
+util::pattern patterns::player_SetNextThink = util::pattern( );
+util::pattern patterns::player_PhysicsRunThink = util::pattern( );
 int* patterns::m_nPredictionRandomSeed = nullptr;
 Player* patterns::m_pPredictionPlayer = nullptr;
 
@@ -50,15 +57,15 @@ bool patterns::init( void )
 	if ( !patterns::surface_lock_cursor.get( ) )
 		return false;
 
-	patterns::clientmodeshared_createmove = util::pattern::search( "client.dll" , "55 8B EC 8B 0D ? ? ? ? 85 C9 75 06 B0" );
+	patterns::clientmodeshared_createmove = util::pattern::search( "client.dll" , "55 8B EC 8B 4D 04 8B C1" );
 	if ( !patterns::clientmodeshared_createmove.get( ) )
 		return false;
 
-	patterns::override_view_sig = util::pattern::search( "client.dll" , "55 8B EC 83 E4 F8 83 EC 58 56 57 8B 3D ? ? ? ? 85 FF" );
+	patterns::override_view_sig = util::pattern::search( "client.dll" , "55 8B EC 83 E4 F8 8B 4D 04 83 EC 58" );
 	if ( !patterns::override_view_sig.get( ) )
 		return false;
 
-	patterns::modelrender_drawmodelexecute = util::pattern::search( "engine.dll" , "55 8B EC 83 E4 F8 81 EC ? ? ? ? 53 56 8B 75 10" );
+	patterns::modelrender_drawmodelexecute = util::pattern::search( "engine.dll" , "55 8B EC 83 E4 F8 81 EC ? ? ? ? 53 56 89 4C 24 10" );
 	if ( !patterns::modelrender_drawmodelexecute.get( ) )
 		return false;
 
@@ -66,7 +73,7 @@ bool patterns::init( void )
 	if ( !patterns::c_csplayer_get_eye_angles.get( ) )
 		return false;
 
-	patterns::CL_Move = util::pattern::search( "engine.dll" , "55 8B EC 81 EC ? ? ? ? 53 56 57 8B 3D ? ? ? ? 8A" );
+	patterns::CL_Move = util::pattern::search( "engine.dll" , "55 8B EC 81 EC ? ? ? ? 53 56 8A F9 F3 0F 11 45 ? 8B 4D 04" );
 	if ( !patterns::CL_Move.get( ) )
 		return false;
 
@@ -160,6 +167,19 @@ bool patterns::init( void )
 	if ( !patterns::player_spawn_time.get( ) )
 		return false;
 
+	patterns::m_LastCmd = util::pattern::search( "client.dll" , "8D 8E ? ? ? ? 89 5C 24 3C" );
+	if ( !patterns::m_LastCmd.get( ) )
+		return false;
+
+	patterns::m_afButtonForced = util::pattern::search( "client.dll" , "8B 86 ? ? ? ? 09 47 30" );
+	if ( !patterns::m_afButtonForced.get( ) )
+		return false;
+
+	//patterns::m_afButtonLast = util::pattern::search( "client.dll" , "33 CA 89 86 ? ? ? ?" );
+	patterns::m_afButtonLast = 0x3208;
+	if ( !patterns::m_afButtonLast.get( ) )
+		return false;
+
 	patterns::SetAbsAngles = util::pattern::search( "client.dll" , "55 8B EC 83 E4 F8 83 EC 64 53 56 57 8B F1 E8 ?" );
 	if ( !patterns::SetAbsAngles.get( ) )
 		return false;
@@ -180,8 +200,31 @@ bool patterns::init( void )
 	if ( !patterns::BoneAccessor.get( ) )
 		return false;
 
+	util::pattern sPreThink = util::pattern::search( "client.dll" , "FF 90 ? ? ? ? 8B 86 ? ? ? ? 83 F8 FF" ).add( 0x2 );
+	if ( !sPreThink.get( ) )
+		return false;
+
+	patterns::PreThink_idx = *( int* ) ( sPreThink.get( ) ) / 4;
+
+	util::pattern sThink = util::pattern::search( "client.dll" , "FF 90 ? ? ? ? FF 35 ? ? ? ? 8B 4C 24 3C" ).add( 0x2 );
+	if ( !sThink.get( ) )
+		return false;
+
+	patterns::Think_idx = *( int* ) ( sThink.get( ) ) / 4;
+
+	patterns::player_SetNextThink = util::pattern::search( "client.dll" , "55 8B EC 56 57 8B F9 8B B7 E8" );
+	if ( !patterns::player_SetNextThink.get( ) )
+		return false;
+
+	patterns::player_PhysicsRunThink = util::pattern::search( "client.dll" , "55 8B EC 83 EC 10 53 56 57 8B F9 8B 87 ? ? ? ? C1 E8 16" );
+	if ( !patterns::player_PhysicsRunThink.get( ) )
+		return false;
+
 	patterns::m_nPredictionRandomSeed = util::address( util::get_virtual_function< void* >( sdk::interfaces::prediction , 19 ) ).add( 0x30 ).deref( ).get< int* >( );
 	patterns::m_pPredictionPlayer = util::address( util::get_virtual_function< void* >( sdk::interfaces::prediction , 19 ) ).add( 0x54 ).deref( ).get< Player* >( );
+
+	//patterns::m_nPredictionRandomSeed = util::pattern::search( "client.dll" , "8B 47 40 A3" ).add( 4 ).deref( ).get< int* >( );
+	//patterns::m_pPredictionPlayer = util::pattern::search( "client.dll" , "0F 5B C0 89 35" ).add( 5 ).deref( ).get< Player* >( );
 
 	return true;
 }

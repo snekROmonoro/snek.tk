@@ -2,6 +2,7 @@
 #include "include.hpp"
 #include "../globals/globals.hpp"
 #include "interfaces/interfaces.hpp"
+#include "../math/math.hpp"
 
 #define NETVAR_ADDITIVE( t, func, table, prop, off ) \
 t& func( ) { \
@@ -511,6 +512,7 @@ enum animstate_layer_t
 	ANIMATION_LAYER_COUNT ,
 };
 
+#if 0
 enum animstate_pose_param_idx_t
 {
 	PLAYER_POSE_PARAM_FIRST = 0 ,
@@ -537,8 +539,33 @@ enum animstate_pose_param_idx_t
 	//PLAYER_POSE_PARAM_STRAFE_CROSS,
 	PLAYER_POSE_PARAM_COUNT ,
 };
+#endif
+
+enum animstate_pose_param_idx_t {
+	PLAYER_POSE_PARAM_STRAFE_YAW ,
+	PLAYER_POSE_PARAM_STAND ,
+	PLAYER_POSE_PARAM_LEAN_YAW ,
+	PLAYER_POSE_PARAM_SPEED ,
+	PLAYER_POSE_PARAM_LADDER_YAW ,
+	PLAYER_POSE_PARAM_LADDER_SPEED ,
+	PLAYER_POSE_PARAM_JUMP_FALL ,
+	PLAYER_POSE_PARAM_MOVE_YAW ,
+	PLAYER_POSE_PARAM_MOVE_BLEND_CROUCH ,
+	PLAYER_POSE_PARAM_MOVE_BLEND_WALK ,
+	PLAYER_POSE_PARAM_MOVE_BLEND_RUN ,
+	PLAYER_POSE_PARAM_BODY_YAW ,
+	PLAYER_POSE_PARAM_BODY_PITCH ,
+	PLAYER_POSE_PARAM_AIM_BLEND_STAND_IDLE ,
+	PLAYER_POSE_PARAM_AIM_BLEND_STAND_WALK ,
+	PLAYER_POSE_PARAM_AIM_BLEND_STAND_RUN ,
+	PLAYER_POSE_PARAM_AIM_BLEND_CROUCH_IDLE ,
+	PLAYER_POSE_PARAM_AIM_BLEND_CROUCH_WALK ,
+	PLAYER_POSE_PARAM_DEATH_YAW ,
+	PLAYER_POSE_PARAM_COUNT = 20
+};
 
 class Player;
+class Weapon;
 
 struct animstate_pose_param_cache_t
 {
@@ -549,68 +576,232 @@ struct animstate_pose_param_cache_t
 	void SetValue( Player* pPlayer , float flValue );
 };
 
+struct procedural_foot_t
+{
+	vec3_t m_vecPosAnim;
+	vec3_t m_vecPosAnimLast;
+	vec3_t m_vecPosPlant;
+	vec3_t m_vecPlantVel;
+	float m_flLockAmount;
+	float m_flLastPlantTime;
+
+	procedural_foot_t( )
+	{
+		m_vecPosAnim.init( );
+		m_vecPosAnimLast.init( );
+		m_vecPosPlant.init( );
+		m_vecPlantVel.init( );
+		m_flLockAmount = 0;
+		m_flLastPlantTime = 0;
+	}
+
+	void Init( vec3_t vecNew )
+	{
+		m_vecPosAnim = vecNew;
+		m_vecPosAnimLast = vecNew;
+		m_vecPosPlant = vecNew;
+		m_vecPlantVel.init( );
+		m_flLockAmount = 0;
+		m_flLastPlantTime = 0;
+	}
+};
+
+struct aimmatrix_transition_t
+{
+	float	m_flDurationStateHasBeenValid;
+	float	m_flDurationStateHasBeenInValid;
+	float	m_flHowLongToWaitUntilTransitionCanBlendIn;
+	float	m_flHowLongToWaitUntilTransitionCanBlendOut;
+	float	m_flBlendValue;
+
+	void UpdateTransitionState( bool bStateShouldBeValid , float flTimeInterval , float flSpeed )
+	{
+		if ( bStateShouldBeValid )
+		{
+			m_flDurationStateHasBeenInValid = 0;
+			m_flDurationStateHasBeenValid += flTimeInterval;
+			if ( m_flDurationStateHasBeenValid >= m_flHowLongToWaitUntilTransitionCanBlendIn )
+			{
+				m_flBlendValue = math::approach( 1 , m_flBlendValue , flSpeed );
+			}
+		}
+		else
+		{
+			m_flDurationStateHasBeenValid = 0;
+			m_flDurationStateHasBeenInValid += flTimeInterval;
+			if ( m_flDurationStateHasBeenInValid >= m_flHowLongToWaitUntilTransitionCanBlendOut )
+			{
+				m_flBlendValue = math::approach( 0 , m_flBlendValue , flSpeed );
+			}
+		}
+	}
+
+	void Init( void )
+	{
+		m_flDurationStateHasBeenValid = 0;
+		m_flDurationStateHasBeenInValid = 0;
+		m_flHowLongToWaitUntilTransitionCanBlendIn = 0.3f;
+		m_flHowLongToWaitUntilTransitionCanBlendOut = 0.3f;
+		m_flBlendValue = 0;
+	}
+
+	aimmatrix_transition_t( )
+	{
+		Init( );
+	}
+};
+
+typedef const int* animlayerpreset;
+
 class CCSGOPlayerAnimState {
 public:
-	char _pad0 [ 0x4 ];
-	bool m_bFirstRunSinceInit;
-	char _pad1 [ 0x5b ];
+	animlayerpreset			m_pLayerOrderPreset;
+
+	bool					m_bFirstRunSinceInit;
+
+	bool					m_bFirstFootPlantSinceInit;
+	int						m_iLastUpdateFrame;
+
+	float					m_flEyePositionSmoothLerp;
+
+	float					m_flStrafeChangeWeightSmoothFalloff;
+
+	aimmatrix_transition_t	m_tStandWalkAim;
+	aimmatrix_transition_t	m_tStandRunAim;
+	aimmatrix_transition_t	m_tCrouchWalkAim;
+
+	int						m_cachedModelIndex;
+
+	float					m_flStepHeightLeft;
+	float					m_flStepHeightRight;
+
+	void* m_pWeaponLastBoneSetup;
+
 	Player* m_pPlayer;
-	void* m_pWeapon;
-	void* m_pWeaponLast;
-	float m_flLastUpdateTime;
-	int m_nLastUpdateFrame;
-	float m_flLastUpdateIncrement;
-	float m_flEyeYaw;
-	float m_flEyePitch;
-	float m_flFootYaw;
-	float m_flFootYawLast;
-	float m_flMoveYaw;
-	float m_flMoveYawIdeal;
-	float m_flMoveYawCurrentToIdeal;
-	float m_flTimeToAlignLowerBody;
-	float m_flPrimaryCycle;
-	float m_flMoveWeight;
-	float m_flMoveWeightSmoothed;
-	float m_flAnimDuckAmount;
-	float m_flDuckAdditional;
-	float m_flRecrouchWeight;
-	vec3_t m_vecPositionCurrent;
-	vec3_t m_vecPositionLast;
-	vec3_t m_vecVelocity;
-	vec3_t m_vecVelocityNormalized;
-	vec3_t m_vecVelocityNormalizedNonZero;
-	float m_flVelocityLengthXY;
-	float m_flVelocityLengthZ;
-	float m_flSpeedAsPortionOfRunTopSpeed;
-	float m_flSpeedAsPortionOfWalkTopSpeed;
-	float m_flSpeedAsPortionOfCrouchTopSpeed;
-	float m_flDurationMoving;
-	float m_flDurationStill;
-	bool m_bOnGround;
-	bool m_bLanding;
-	char _pad2 [ 0x12 ];
-	float m_flWalkToRunTransition;
-	char _pad3 [ 0x4 ];
-	float m_flInAirSmoothValue;
-	bool m_bOnLadder;
-	char _pad4 [ 0x3 ];
-	float m_flLadderWeight;
-	char _pad5 [ 0x2c ];
-	vec3_t m_vecVelocityLast;
-	char _pad6 [ 0x45 ];
-	bool m_bPlayerIsAccelerating;
-	char _pad7 [ 0x2 ];
+	Weapon* m_pWeapon;
+	Weapon* m_pWeaponLast;
+
+	float					m_flLastUpdateTime;
+	int						m_nLastUpdateFrame;
+	float					m_flLastUpdateIncrement;
+
+	float					m_flEyeYaw;
+	float					m_flEyePitch;
+	float					m_flFootYaw;
+	float					m_flFootYawLast;
+	float					m_flMoveYaw;
+	float					m_flMoveYawIdeal;
+	float					m_flMoveYawCurrentToIdeal;
+	float					m_flTimeToAlignLowerBody;
+
+	float					m_flPrimaryCycle;
+	float					m_flMoveWeight;
+	float					m_flMoveWeightSmoothed;
+	float					m_flAnimDuckAmount;
+	float					m_flDuckAdditional;
+	float					m_flRecrouchWeight;
+
+	vec3_t					m_vecPositionCurrent;
+	vec3_t					m_vecPositionLast;
+
+	vec3_t					m_vecVelocity;
+	vec3_t					m_vecVelocityNormalized;
+	vec3_t					m_vecVelocityNormalizedNonZero;
+	float					m_flVelocityLengthXY;
+	float					m_flVelocityLengthZ;
+
+	float					m_flSpeedAsPortionOfRunTopSpeed;
+	float					m_flSpeedAsPortionOfWalkTopSpeed;
+	float					m_flSpeedAsPortionOfCrouchTopSpeed;
+
+	float					m_flDurationMoving;
+	float					m_flDurationStill;
+
+	bool					m_bOnGround;
+
+	bool					m_bLanding;
+	float					m_flJumpToFall;
+	float					m_flDurationInAir;
+	float					m_flLeftGroundHeight;
+	float					m_flLandAnimMultiplier;
+
+	float					m_flWalkToRunTransition;
+
+	bool					m_bLandedOnGroundThisFrame;
+	bool					m_bLeftTheGroundThisFrame;
+	float					m_flInAirSmoothValue;
+
+	bool					m_bOnLadder;
+	float					m_flLadderWeight;
+	float					m_flLadderSpeed;
+
+	bool					m_bWalkToRunTransitionState;
+
+	bool					m_bDefuseStarted;
+	bool					m_bPlantAnimStarted;
+	bool					m_bTwitchAnimStarted;
+	bool					m_bAdjustStarted;
+
+	CUtlVector< uint16_t >	m_ActivityModifiers;
+
+	float					m_flNextTwitchTime;
+
+	float					m_flTimeOfLastKnownInjury;
+
+	float					m_flLastVelocityTestTime;
+	vec3_t					m_vecVelocityLast;
+	vec3_t					m_vecTargetAcceleration;
+	vec3_t					m_vecAcceleration;
+	float					m_flAccelerationWeight;
+
+	float					m_flAimMatrixTransition;
+	float					m_flAimMatrixTransitionDelay;
+
+	bool					m_bFlashed;
+
+	float					m_flStrafeChangeWeight;
+	float					m_flStrafeChangeTargetWeight;
+	float					m_flStrafeChangeCycle;
+	int						m_nStrafeSequence;
+	bool					m_bStrafeChanging;
+	float					m_flDurationStrafing;
+
+	float					m_flFootLerp;
+
+	bool					m_bFeetCrossed;
+
+	bool					m_bPlayerIsAccelerating;
+
 	animstate_pose_param_cache_t m_tPoseParamMappings [ PLAYER_POSE_PARAM_COUNT ];
-	float m_flDurationMoveWeightIsTooHigh;
-	float m_flStaticApproachSpeed;
-	int m_nPreviousMoveState;
-	float m_flStutterStep;
-	char _pad8 [ 0x80 ];
-	float m_flAimYawMin;
-	float m_flAimYawMax;
-	float m_flAimPitchMin;
-	float m_flAimPitchMax;
-	int m_nAnimstateModelVersion;
+
+	float					m_flDurationMoveWeightIsTooHigh;
+	float					m_flStaticApproachSpeed;
+
+	int						m_nPreviousMoveState;
+	float					m_flStutterStep;
+
+	float					m_flActionWeightBiasRemainder;
+
+	procedural_foot_t		m_footLeft;
+	procedural_foot_t		m_footRight;
+
+	float					m_flCameraSmoothHeight;
+	bool					m_bSmoothHeightValid;
+	float					m_flLastTimeVelocityOverTen;
+
+	// https://www.unknowncheats.me/forum/3264564-post14969.html
+	PAD( 0x4 );
+
+	float					m_flAimYawMin;
+	float					m_flAimYawMax;
+	float					m_flAimPitchMin;
+	float					m_flAimPitchMax;
+
+	//float					m_flMoveWalkWeight;
+	//float					m_flMoveCrouchWalkWeight;
+	//float					m_flMoveRunWeight;
+
+	int						m_nAnimstateModelVersion;
 };
 
 class CStudioHdr {
@@ -712,6 +903,7 @@ public:
 
 	NETVAR( int , m_nTickBase , "DT_CSPlayer" , "m_nTickBase" );
 	NETVAR( float , m_flNextAttack , "DT_CSPlayer" , "m_flNextAttack" );
+	NETVAR( float , m_flVelocityModifier , "DT_CSPlayer" , "m_flVelocityModifier" );
 	NETVAR( float , m_flDuckAmount , "DT_BasePlayer" , "m_flDuckAmount" );
 	NETVAR( float , m_flDuckSpeed , "DT_BasePlayer" , "m_flDuckSpeed" );
 	NETVAR( float , m_flSimulationTime , "DT_BaseEntity" , "m_flSimulationTime" );
@@ -759,16 +951,93 @@ public:
 	OFFSET( CBoneCache , m_BoneCache , 0x2910 );
 	POFFSET( matrix3x4_t** , m_BoneCache2 , 0x2910 );
 	NETVAR( EHANDLE , m_hObserverTarget , "DT_CSPlayer" , "m_hObserverTarget" );
-	NETVAR( EHANDLE , m_hActiveWeapon , "DT_BaseCombatCharacter" , "m_hActiveWeapon " );
+	NETVAR( EHANDLE , m_hActiveWeapon , "DT_BaseCombatCharacter" , "m_hActiveWeapon" );
 	NETVAR( EHANDLE , m_hGroundEntity , "DT_CSPlayer" , "m_hGroundEntity" );
 	PNETVAR( CBaseHandle* , m_hMyWeapons , "DT_CSPlayer" , "m_hMyWeapons" );
 
-	CUserCmd& m_PlayerCommand( ) {
-		return get< CUserCmd >( 0x326C );
+	CUserCmd*& m_pCurrentCommand( )
+	{
+		static auto offset = patterns::m_LastCmd.add( 0xc ).deref( ).get( );
+		return get< CUserCmd* >( offset );
 	}
 
-	CUserCmd*& m_pCurrentCommand( ) {
-		return get< CUserCmd* >( 0x3314 );
+	CUserCmd& m_LastCmd( )
+	{
+		static auto offset = patterns::m_LastCmd.add( 0x2 ).deref( ).get( );
+		return get< CUserCmd >( offset );
+	}
+
+	int& m_afButtonForced( )
+	{
+		static auto offset = patterns::m_afButtonForced.add( 0x2 ).deref( ).get( );
+		return get< int >( offset );
+	}
+
+	int& m_afButtonDisabled( )
+	{
+		static auto offset = patterns::m_afButtonForced.add( 0x2 ).deref( ).sub( 0x4 ).get( );
+		return get< int >( offset );
+	}
+
+	int& m_afButtonLast( )
+	{
+		static auto offset = patterns::m_afButtonLast.add( 0x4 ).deref( ).get( );
+		return get< int >( offset );
+	}
+
+	int& m_afButtonPressed( )
+	{
+		static auto offset = patterns::m_afButtonLast.add( 0x4 ).deref( ).add( 0x4 ).get( );
+		return get< int >( offset );
+	}
+
+	int& m_afButtonReleased( )
+	{
+		static auto offset = patterns::m_afButtonLast.add( 0x4 ).deref( ).add( 0x8 ).get( );
+		return get< int >( offset );
+	}
+
+	int& m_nButtons( )
+	{
+		static auto offset = patterns::m_afButtonLast.add( 0x4 ).deref( ).add( 0xc ).get( );
+		return get< int >( offset );
+	}
+
+	int& m_nImpulse( )
+	{
+		static auto offset = patterns::m_afButtonLast.add( 0x4 ).deref( ).add( 0x10 ).get( );
+		return get< int >( offset );
+	}
+
+	void UpdateButtonState( int nUserCmdButtonMask )
+	{
+		// Track button info so we can detect 'pressed' and 'released' buttons next frame
+		m_afButtonLast( ) = m_nButtons( );
+
+		// Get button states
+		m_nButtons( ) = nUserCmdButtonMask;
+		int buttonsChanged = m_afButtonLast( ) ^ m_nButtons( );
+
+		// Debounced button codes for pressed/released
+		// UNDONE: Do we need auto-repeat?
+		m_afButtonPressed( ) = buttonsChanged & m_nButtons( );		// The changed ones still down are "pressed"
+		m_afButtonReleased( ) = buttonsChanged & ( ~m_nButtons( ) );	// The ones not down are "released"
+	}
+
+	bool PhysicsRunThink( int unk01 ) {
+		return patterns::player_PhysicsRunThink.get< bool( __thiscall* )( void* , int ) >( )( this , unk01 );
+	}
+
+	int SetNextThink( int tick ) {
+		return patterns::player_SetNextThink.get< int( __thiscall* )( void* , int ) >( )( this , tick );
+	}
+
+	void Think( ) {
+		util::get_virtual_function< void( __thiscall* )( void* ) >( this , /*139*/ patterns::Think_idx )( this );
+	}
+
+	void PreThink( ) {
+		util::get_virtual_function< void( __thiscall* )( void* ) >( this , /*318*/ patterns::PreThink_idx )( this );
 	}
 
 	C_AnimationLayer* m_AnimOverlay( ) {
@@ -783,8 +1052,6 @@ public:
 		return get< CBoneAccessor >( patterns::BoneAccessor.get( ) );
 	}
 
-	OFFSET( float , m_flVelocityModifier , 0xA38C );
-
 	unsigned long GetRefEHandle( ) {
 		if ( !this->GetIClientUnknown( ) )
 			return NULL;
@@ -794,16 +1061,16 @@ public:
 
 	void BuildTransformations( CStudioHdr* hdr , vec3_t* pos , quaternion* q , const matrix3x4a_t& transform , int mask , uint8_t* computed ) {
 		using BuildTransformations_t = void( __thiscall* )( void* , CStudioHdr* , vec3_t* , quaternion* , matrix3x4a_t const& , int , uint8_t* );
-		return util::get_virtual_function< BuildTransformations_t >( this , 189 )( this , hdr , pos , q , transform , mask , computed );
+		return util::get_virtual_function< BuildTransformations_t >( this , 190 )( this , hdr , pos , q , transform , mask , computed );
 	}
 
 	void StandardBlendingRules( CStudioHdr* hdr , vec3_t* pos , quaternion* q , float time , int mask ) {
 		using StandardBlendingRules_t = void( __thiscall* )( void* , CStudioHdr* , vec3_t* , quaternion* , float , int );
-		return util::get_virtual_function< StandardBlendingRules_t >( this , 205 )( this , hdr , pos , q , time , mask );
+		return util::get_virtual_function< StandardBlendingRules_t >( this , 206 )( this , hdr , pos , q , time , mask );
 	}
 
 	float GetFOV( ) {
-		return util::get_virtual_function< float( __thiscall* )( void* ) >( this , 326 )( this );
+		return util::get_virtual_function< float( __thiscall* )( void* ) >( this , 327 )( this );
 	}
 
 	const vec3_t& WorldSpaceCenter( ) {
@@ -811,7 +1078,7 @@ public:
 	}
 
 	void EyePosition( vec3_t* pos ) {
-		util::get_virtual_function< float* ( __thiscall* )( Player* , vec3_t* ) >( this , 168 )( this , pos );
+		util::get_virtual_function< float* ( __thiscall* )( Player* , vec3_t* ) >( this , 169 )( this , pos );
 	}
 
 	Weapon* GetActiveWeapon( );

@@ -8,15 +8,24 @@
 class Entity;
 class CUserCmd;
 
+//class IMoveHelper {
+//public:
+//	void SetHost( Entity* host ) {
+//		return util::get_virtual_function< void( __thiscall* )( void* , Entity* ) >( this , 1 )( this , host );
+//	}
+//
+//	void ProcessImpacts( ) {
+//		return util::get_virtual_function< void( __thiscall* )( void* ) >( this , 4 )( this );
+//	}
+//};
+
 class IMoveHelper {
 public:
-	void SetHost( Entity* host ) {
-		return util::get_virtual_function< void( __thiscall* )( void* , Entity* ) >( this , 1 )( this , host );
-	}
-
-	void ProcessImpacts( ) {
-		return util::get_virtual_function< void( __thiscall* )( void* ) >( this , 4 )( this );
-	}
+	virtual void pad00( ) = 0;
+	virtual void SetHost( void* host ) = 0;
+	virtual void pad01( ) = 0;
+	virtual void pad02( ) = 0;
+	virtual void ProcessImpacts( ) = 0;
 };
 
 class CPrediction
@@ -53,6 +62,10 @@ public:
 
 	void SetLocalViewAngles( vec3_t& ang ) {
 		return util::get_virtual_function< void( __thiscall* )( void* , vec3_t& ) >( this , 13 )( this , ang );
+	}
+
+	void CheckMovingGround( Entity* player , double frametime ) {
+		return util::get_virtual_function< void( __thiscall* )( void* , Entity* , double ) >( this , 18 )( this , player , frametime );
 	}
 
 	void SetupMove( Entity* player , CUserCmd* cmd , IMoveHelper* helper , CMoveData* data ) {

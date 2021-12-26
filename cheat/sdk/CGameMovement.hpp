@@ -23,10 +23,3 @@ public:
 	virtual void		        UnblockPusher( Entity* pPlayer , Entity* pPusher ) = 0;
 	virtual void            SetupMovementBounds( CMoveData* pMove ) = 0;
 };
-
-class CGameMovement
-	: public IGameMovement
-{
-public:
-	virtual ~CGameMovement( void ) {}
-};
